@@ -10,8 +10,8 @@ import (
 
 var start = `import Foundation
 
-// Client is the API client.
-struct Client {
+// %s is the API client.
+struct %s {
     // url is the required API endpoint address.
     let url: URL
 
@@ -21,20 +21,12 @@ struct Client {
     // session is the client used for making requests, defaulting to URLSession.shared.
     let session: URLSession = URLSession.shared
 
+    static let encoder = JSONEncoder()
+    
+    static let decoder = JSONDecoder()
+
 `
 var end = `}
-
-let encoder: JSONEncoder = { () -> JSONEncoder in
-    let encoder = JSONEncoder()
-    encoder.keyEncodingStrategy = .convertToSnakeCase
-    return encoder
-}()
-
-let decoder: JSONDecoder = { () -> JSONDecoder in
-    let decoder = JSONDecoder()
-    decoder.keyDecodingStrategy = .convertFromSnakeCase
-    return decoder
-}()
 
 struct RPCError: Codable, Error {
     let status: String

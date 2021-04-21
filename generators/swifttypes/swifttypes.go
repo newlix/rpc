@@ -3,8 +3,8 @@ package swifttypes
 import (
 	"fmt"
 	"io"
-	"strings"
 
+	"github.com/apex/rpc/internal/format"
 	"github.com/apex/rpc/internal/schemautil"
 	"github.com/apex/rpc/schema"
 	"github.com/iancoleman/strcase"
@@ -18,30 +18,27 @@ func Generate(w io.Writer, s *schema.Schema, validate bool) error {
 
 	// types
 	for _, t := range s.TypesSlice() {
-		out(w, "// %s %s\n", strcase.ToCamel(t.Name), t.Description)
-		out(w, "struct %s: Codable {\n", strcase.ToCamel(t.Name))
+		out(w, "// %s %s\n", format.GoName(t.Name), t.Description)
+		out(w, "struct %s: Codable {\n", format.GoName(t.Name))
 		writeFields(w, s, t.Properties)
-		if validate {
-			writeValidation(w, strcase.ToLowerCamel(t.Name), t.Properties)
-			out(w, "\n")
-		}
+		out(w, "\n")
+		writeCodingKeys(w, s, t.Properties)
+
 		out(w, "}\n\n")
 	}
 
 	// methods
 	for _, m := range s.Methods {
-		name := strcase.ToCamel(m.Name)
+		name := format.GoName(m.Name)
 
 		// inputs
 		if len(m.Inputs) > 0 {
 			out(w, "// %sInput params.\n", name)
 			out(w, "struct %sInput: Codable {\n", name)
 			writeFields(w, s, m.Inputs)
+			out(w, "\n")
+			writeCodingKeys(w, s, m.Inputs)
 			out(w, "}\n")
-			if validate {
-				out(w, "\n")
-				writeValidation(w, name+"Input", m.Inputs)
-			}
 		}
 
 		// both
@@ -54,6 +51,8 @@ func Generate(w io.Writer, s *schema.Schema, validate bool) error {
 			out(w, "// %sOutput params.\n", name)
 			out(w, "struct %sOutput: Codable {\n", name)
 			writeFields(w, s, m.Outputs)
+			out(w, "\n")
+			writeCodingKeys(w, s, m.Outputs)
 			out(w, "}\n")
 		}
 
@@ -76,9 +75,23 @@ func writeFields(w io.Writer, s *schema.Schema, fields []schema.Field) {
 
 // writeField to writer.
 func writeField(w io.Writer, s *schema.Schema, f schema.Field) {
-	name := strcase.ToLowerCamel(f.Name)
+	name := strcase.ToLowerCamel(format.GoName(f.Name))
 	fmt.Fprintf(w, "    // %s is %s%s\n", name, f.Description, schemautil.FormatExtra(f))
 	fmt.Fprintf(w, "    var %s: %s\n", name, swiftType(s, f))
+}
+
+// writeCodingKeys to writer
+func writeCodingKeys(w io.Writer, s *schema.Schema, fields []schema.Field) {
+	fmt.Fprintf(w, "    enum CodingKeys: String, CodingKey {\n")
+	for _, f := range fields {
+		writeCodingKey(w, s, f)
+	}
+	fmt.Fprintf(w, "    }\n")
+}
+
+// writeCodingKeys to writer
+func writeCodingKey(w io.Writer, s *schema.Schema, f schema.Field) {
+	fmt.Fprintf(w, "        case %s = \"%s\"\n", strcase.ToLowerCamel(format.GoName(f.Name)), f.Name)
 }
 
 // swiftType returns a Go equivalent type for field f.
@@ -86,7 +99,7 @@ func swiftType(s *schema.Schema, f schema.Field) string {
 	// ref
 	if ref := f.Type.Ref.Value; ref != "" {
 		t := schemautil.ResolveRef(s, f.Type.Ref)
-		return strcase.ToCamel(t.Name)
+		return format.GoName(t.Name)
 	}
 
 	// type
@@ -114,40 +127,4 @@ func swiftType(s *schema.Schema, f schema.Field) string {
 	}
 }
 
-// writeValidation writes a validation method implementation to w.
-func writeValidation(w io.Writer, name string, fields []schema.Field) error {
-	out := fmt.Fprintf
-	recv := strings.ToLower(name)[0]
-	out(w, "// Validate implementation.\n")
-	out(w, "func (%c *%s) Validate() error {\n", recv, name)
-	for _, f := range fields {
-		writeFieldDefaults(w, f, recv)
-	}
-	out(w, "  return nil\n")
-	out(w, "}\n")
-	return nil
-}
-
-// writeFieldDefaults writes field defaults to w.
-func writeFieldDefaults(w io.Writer, f schema.Field, recv byte) error {
-	// TODO: write out a separate Default() method?
-	if f.Default == nil {
-		return nil
-	}
-
-	out := fmt.Fprintf
-	name := strcase.ToCamel(f.Name)
-
-	switch f.Type.Type {
-	case schema.Int:
-		out(w, "  if %c.%s == 0 {\n", recv, name)
-		out(w, "    %c.%s = %v\n", recv, name, f.Default)
-		out(w, "  }\n\n")
-	case schema.String:
-		out(w, "  if %c.%s == \"\" {\n", recv, name)
-		out(w, "    %c.%s = %q\n", recv, name, f.Default)
-		out(w, "  }\n\n")
-	}
-
-	return nil
-}
+//TODO validation
