@@ -19,12 +19,12 @@ struct Client {
 
     // addItem adds an item to the list.
     func addItem(input: AddItemInput, complete: @escaping (_ error: Error?) -> ()) {
-        call(endpoint: self.url, method: "add_item", input: input, complete: { (_: String, err: HTTPError?) in complete(err) })
+        call(endpoint: self.url, method: "add_item", input: input, complete: { (_: Nothing?, err: Error?) in complete(err) })
     }
 
     // getItems returns all items in the list.
     func getItems(complete: @escaping (_ output: GetItemsOutput?, _ err: Error?) -> ()) {
-        call(endpoint: self.url, method: "get_items", input: "", complete: complete)
+        call(endpoint: self.url, method: "get_items", input: Nothing(), complete: complete)
     }
 
     // removeItem removes an item from the to-do list.
@@ -39,6 +39,7 @@ struct Client {
         var url = endpoint
         url.appendPathComponent(method, isDirectory: false)
 
+        var r = URLRequest(url: url)
         r.httpMethod = "POST"
         r.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let token = self.authToken {
@@ -46,7 +47,9 @@ struct Client {
         }
 
         do {
-            r.httpBody = try self.encoder.encode(input)
+            if !(input is Nothing) {
+                r.httpBody = try self.encoder.encode(input)
+            }
         } catch {
             complete(nil, error)
         }
@@ -54,31 +57,37 @@ struct Client {
         self.session.dataTask(with: r) { (data, response, resError) in
             let response: HTTPURLResponse! = response as? HTTPURLResponse
             if response == nil {
-                complete(nil, "not http response: respone: \(response) err:(\(resError)")
+                complete(nil, "not http response: respone: \(String(describing: response)) err:(\(String(describing: resError))")
+                return
             }
 
 
             // error
-            let code = httpResponse.statusCode
+            let code = response.statusCode
             let status = HTTPURLResponse.localizedString(forStatusCode: code)
             if code >= 300 {
                 do {
-                    let body = try self.decoder.decode(ResponseErrorBody.self, from: data)
-                    let err = HTTPError(status: status, statusCode: code, type: body.type, message: body.message)
+                    let body = try self.decoder.decode(ResponseErrorBody.self, from: data ?? Data())
+                    let err = HTTPError(status: status, statusCode: code, type: body.type, message: body.message)
                     complete(nil, err)
                 } catch {
                     complete(nil, error)
                 }
+                return
             }
 
             // output
             do {
-                let out = try self.decoder.decode(Output.self, from: data)
-                complete(out, nil)
+                if Output.self is Nothing.Type {
+                    complete(nil, nil)
+                } else {
+                    let out = try self.decoder.decode(Output.self, from: data ?? Data())
+                    complete(out, nil)
+                }
             } catch {
                 complete(nil, error)
             }
-        }
+        }.resume()
     }
 }
 
@@ -89,11 +98,15 @@ struct HTTPError: Error {
     let message: String
 }
 
-struct ResponseErrorBody: Codable {
+struct ResponseErrorBody: Codable {
     let type: String
     let message: String
 }
 
 extension String: Error {
+
+}
+
+struct Nothing: Codable {
 
 }
