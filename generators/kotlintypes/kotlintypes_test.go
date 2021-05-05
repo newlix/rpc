@@ -1,4 +1,4 @@
-package swiftclient_test
+package kotlintypes_test
 
 import (
 	"bytes"
@@ -7,17 +7,17 @@ import (
 	"github.com/tj/assert"
 	"github.com/tj/go-fixture"
 
-	"github.com/apex/rpc/generators/swiftclient"
+	"github.com/apex/rpc/generators/kotlintypes"
 	"github.com/apex/rpc/schema"
 )
 
-func TestGenerate(t *testing.T) {
+func TestGenerate_noValidate(t *testing.T) {
 	schema, err := schema.Load("../../examples/todo/schema.json")
 	assert.NoError(t, err, "loading schema")
 
 	var act bytes.Buffer
-	err = swiftclient.Generate(&act, schema, "Client")
+	err = kotlintypes.Generate(&act, schema, false)
 	assert.NoError(t, err, "generating")
 
-	fixture.Assert(t, "todo_client.swift", act.Bytes())
+	fixture.Assert(t, "todo_types_no_validate.kt", act.Bytes())
 }

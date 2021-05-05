@@ -12,90 +12,94 @@ var start = `import Foundation
 
 // %s is the API client.
 struct %s {
+    // encoder is the conventional json encoder
+    let encoder = JSONEncoder()
+
+    // decoder is the conventional json decoder
+    let decoder = JSONDecoder()
+
     // url is the required API endpoint address.
     let url: URL
 
     // AuthToken is an optional authentication token.
-    let authToken: String?
+    var authToken: String?
 
     // session is the client used for making requests, defaulting to URLSession.shared.
     let session: URLSession = URLSession.shared
 
-    static let encoder = JSONEncoder()
-    
-    static let decoder = JSONDecoder()
-
 `
-var end = `}
-
-struct RPCError: Codable, Error {
-    let status: String
-    let statusCode: Int
-    let type: String
-    let message: String
-}
-
-struct None: Codable {
-    static let only: None = None()
-}
-
+var end = `
 // call implementation.
-private func call<Input, Output>(session: URLSession, authToken: String?, endpoint: URL, method: String, input: Input, complete: @escaping (_ output: Output?, _ error: Error?) -> Void) where Input: Codable, Output: Codable {
+private func call<Input, Output>(endpoint: URL, method: String, input: Input, complete: @escaping (_ output: Output?, _ error: Error?) -> Void) where Input: Codable, Output: Codable {
 
-    var r = URLRequest(url: URL(string: method, relativeTo: endpoint)!)
+    var url = endpoint
+    url.appendPathComponent(method, isDirectory: false)
+
     r.httpMethod = "POST"
-    r.setValue("Application/json", forHTTPHeaderField: "Content-Type")
-    if let token = authToken {
+    r.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    if let token = self.authToken {
         r.setValue("Bearer " + token, forHTTPHeaderField: "Authorization")
     }
 
-    if !(Input.self is None.Type) {
-        do {
-            r.httpBody = try encoder.encode(input)
-        } catch {
-            //todo
-        }
+    do {
+        r.httpBody = try self.encoder.encode(input)
+    } catch {
+        complete(nil, error)
     }
 
-    session.dataTask(with: r, completionHandler: { (data, response, resError) in
-        guard let data = data, let httpResponse = response as? HTTPURLResponse, resError == nil else {
-            print("No valid response: endpoint = \(endpoint), method = \(method)")
-            complete(nil, resError)
-            return
+    self.session.dataTask(with: r) { (data, response, resError) in
+        let response: HTTPURLResponse! = response as? HTTPURLResponse
+        if response == nil {
+            complete(nil, "not http response: respone: \(response) err:(\(resError)")
         }
+
 
         // error
         let code = httpResponse.statusCode
+        let status = HTTPURLResponse.localizedString(forStatusCode: code)
         if code >= 300 {
             do {
-                let err = try decoder.decode(RPCError.self, from: data)
+                let body = try self.decoder.decode(ResponseErrorBody.self, from: data)
+                let err = HTTPError(status: status, statusCode: code, type: body.type, message: body.message)
                 complete(nil, err)
-            } catch {
-                let status = HTTPURLResponse.localizedString(forStatusCode: code)
-                let err = RPCError(status: status, statusCode: code, type: "", message: "")
-                complete(nil, err)
-            }
-        }
-
-        // output
-        if Output.self is None.Type {
-            complete(nil, nil)
-        } else {
-            do {
-                let out = try decoder.decode(Output.self, from: data)
-                complete(out, nil)
             } catch {
                 complete(nil, error)
             }
         }
-    })
-}`
+
+        // output
+        do {
+            let out = try self.decoder.decode(Output.self, from: data)
+            complete(out, nil)
+        } catch {
+            complete(nil, error)
+        }
+    }
+}
+}
+
+struct HTTPError: Error {
+let status: String
+let statusCode: Int
+let type: String
+let message: String
+}
+
+struct ResponseErrorBody: Codable {
+let type: String
+let message: String
+}
+
+extension String: Error {
+
+}
+`
 
 // Generate writes the Go client implementations to w.
-func Generate(w io.Writer, s *schema.Schema) error {
+func Generate(w io.Writer, s *schema.Schema, client string) error {
 	out := fmt.Fprintf
 
-	out(w, start)
+	out(w, start, client, client)
 
 	for _, m := range s.Methods {
 		name := strcase.ToLowerCamel(m.Name)
@@ -126,10 +130,7 @@ func writeInputOnlyMethod(w io.Writer, m schema.Method) {
 	camel := strcase.ToCamel(m.Name)
 	lcamel := strcase.ToLowerCamel(m.Name)
 	template := `    func %s(input: %sInput, complete: @escaping (_ error: Error?) -> ()) {
-        func done(_ none: None?, _ err: Error?) {
-            complete(err)
-        }
-        call(session: self.session, authToken: self.authToken, endpoint: self.url, method: "%s", input: input, complete: done)
+        callInputOnly(endpoint: self.url, method: "%s", input: input, complete: complete)
     }
 
 `
@@ -141,7 +142,7 @@ func writeOutputOnlyMethod(w io.Writer, m schema.Method) {
 	camel := strcase.ToCamel(m.Name)
 	lcamel := strcase.ToLowerCamel(m.Name)
 	template := `    func %s(complete: @escaping (_ output: %sOutput?, _ err: Error?) -> ()) {
-        call(session: self.session, authToken: self.authToken, endpoint: self.url, method: "%s", input: None.only, complete: complete)
+        callOutputOnly(endpoint: self.url, method: "%s", complete: complete)
     }
 
 `
@@ -153,7 +154,7 @@ func writeMethod(w io.Writer, m schema.Method) {
 	camel := strcase.ToCamel(m.Name)
 	lcamel := strcase.ToLowerCamel(m.Name)
 	template := `    func %s(input: %sInput, complete: @escaping (_ output: %sOutput?, _ error: Error?) -> Void) {
-        call(session: self.session, authToken: self.authToken, endpoint: self.url, method: "%s", input: input, complete: complete)
+        call(endpoint: self.url, method: "%s", input: input, complete: complete)
     }
 
 `
