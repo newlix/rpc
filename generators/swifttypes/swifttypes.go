@@ -77,7 +77,7 @@ func writeFields(w io.Writer, s *schema.Schema, fields []schema.Field) {
 func writeField(w io.Writer, s *schema.Schema, f schema.Field) {
 	name := strcase.ToLowerCamel(format.GoName(f.Name))
 	fmt.Fprintf(w, "    // %s is %s%s\n", name, f.Description, schemautil.FormatExtra(f))
-	fmt.Fprintf(w, "    var %s: %s\n", name, swiftType(s, f))
+	fmt.Fprintf(w, "    var %s: %s = %s\n", name, swiftType(s, f), defaultValue(s, f))
 }
 
 // writeCodingKeys to writer
@@ -122,6 +122,35 @@ func swiftType(s *schema.Schema, f schema.Field) string {
 		return "[" + swiftType(s, schema.Field{
 			Type: schema.TypeObject(f.Items),
 		}) + "]"
+	default:
+		panic("unhandled type")
+	}
+}
+
+func defaultValue(s *schema.Schema, f schema.Field) string {
+	if ref := f.Type.Ref.Value; ref != "" {
+		t := schemautil.ResolveRef(s, f.Type.Ref)
+		return strcase.ToCamel(t.Name) + "()"
+	}
+
+	// type
+	switch f.Type.Type {
+	case schema.String:
+		return "\"\""
+	case schema.Int:
+		return "0"
+	case schema.Bool:
+		return "false"
+	case schema.Float:
+		return "0.0"
+	case schema.Timestamp:
+		return "Date()"
+	case schema.Object:
+		return swiftType(s, schema.Field{
+			Type: schema.TypeObject(f.Items),
+		}) + "()"
+	case schema.Array:
+		return "[]"
 	default:
 		panic("unhandled type")
 	}

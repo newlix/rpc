@@ -30,9 +30,9 @@ struct %s {
 `
 var end = `
     // call implementation.
-    private func call<Input, Output>(endpoint: URL, method: String, input: Input, complete: @escaping (_ output: Output?, _ error: Error?) -> Void) where Input: Codable, Output: Codable {
+    private func call<Input, Output>(method: String, input: Input, complete: @escaping (_ output: Output?, _ error: Error?) -> Void) where Input: Codable, Output: Codable {
 
-        var url = endpoint
+        var url = self.url
         url.appendPathComponent(method, isDirectory: false)
 
         var r = URLRequest(url: url)
@@ -143,7 +143,7 @@ func writeInputOnlyMethod(w io.Writer, m schema.Method) {
 	camel := strcase.ToCamel(m.Name)
 	lcamel := strcase.ToLowerCamel(m.Name)
 	template := `    func %s(input: %sInput, complete: @escaping (_ error: Error?) -> ()) {
-        call(endpoint: self.url, method: "%s", input: input, complete: { (_: Nothing?, err: Error?) in complete(err) })
+        call(method: "%s", input: input, complete: { (_: Nothing?, err: Error?) in complete(err) })
     }
 
 `
@@ -155,7 +155,7 @@ func writeOutputOnlyMethod(w io.Writer, m schema.Method) {
 	camel := strcase.ToCamel(m.Name)
 	lcamel := strcase.ToLowerCamel(m.Name)
 	template := `    func %s(complete: @escaping (_ output: %sOutput?, _ err: Error?) -> ()) {
-        call(endpoint: self.url, method: "%s", input: Nothing(), complete: complete)
+        call(method: "%s", input: Nothing(), complete: complete)
     }
 
 `
@@ -167,7 +167,7 @@ func writeMethod(w io.Writer, m schema.Method) {
 	camel := strcase.ToCamel(m.Name)
 	lcamel := strcase.ToLowerCamel(m.Name)
 	template := `    func %s(input: %sInput, complete: @escaping (_ output: %sOutput?, _ error: Error?) -> Void) {
-        call(endpoint: self.url, method: "%s", input: input, complete: complete)
+        call(method: "%s", input: input, complete: complete)
     }
 
 `

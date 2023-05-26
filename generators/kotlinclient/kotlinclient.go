@@ -11,6 +11,7 @@ import (
 var start = `
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
+import io.ktor.client.features.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -20,46 +21,48 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 
-// Client is the API client.
+// RPC is the API client.
 // url is the required API endpoint address.
-class Client(val url: String) {
+class RPC(val url: String) {
     // AuthToken is an optional authentication token.
     var authToken: String? = null
 
     // client is used for making requests, defaulting to URLSession.shared.
-    var client = HttpClient(CIO)
+    val client = HttpClient(CIO)
 
 `
 var end = `
     // call implementation.
     suspend fun call(
-        endpoint: String, method: String, input: String
+        method: String, input: String
     ): String {
 
-        var url = this.url + "/" + endpoint
-
-        val r = this.client.post<HttpResponse>(url) {
-            append(HttpHeaders.ContentType, "application/json")
-            if (this.authToken != null) {
-                append(HttpHeaders.Authorization, "Bearer ${this.authToken}")
+        val url = this.url + "/" + method
+        try {
+            val r = this.client.post<HttpResponse>(url) {
+                headers {
+                    append(HttpHeaders.ContentType, "application/json")
+                    if (authToken != null) {
+                        append(HttpHeaders.Authorization, "Bearer ${authToken}")
+                    }
+                }
+                body = input
             }
-            body = input
-        }
-
-        if (r.status.value >= 300) {
-            var err = Json.decodeFromString<ResponseError>(r.readText())
-            throw HTTPExcepion(
-                status = r.status.description,
-                statusCode = r.status.value,
-                type = err.type,
-                msg = err.message
+            return r.readText()
+        } catch (e: ClientRequestException) {
+            val body = e.response.readText()
+            val json = Json { ignoreUnknownKeys = true }.decodeFromString<ResponseError>(body)
+            throw RPCError(
+                status = e.response.status.description,
+                statusCode = e.response.status.value,
+                type = json.type,
+                msg = json.message
             )
         }
-        return r.readText()
     }
 }
 
-data class HTTPExcepion(
+data class RPCError(
     val status: String,
     val statusCode: Int,
     val type: String,
@@ -67,7 +70,7 @@ data class HTTPExcepion(
 ) : Exception()
 
 @Serializable
-data class ResponseError(val type: String, val message: String)
+private data class ResponseError(val type: String, val message: String)
 `
 
 // Generate writes the Go client implementations to w.
@@ -105,8 +108,8 @@ func writeInputOnlyMethod(w io.Writer, m schema.Method) {
 	camel := strcase.ToCamel(m.Name)
 	lcamel := strcase.ToLowerCamel(m.Name)
 	template := `    suspend fun %s(input: %sInput) {
-        val s = Json.encodeToString(intput)
-        call(endpoint = this.url, method = "%s", input = s)
+        val s = Json { ignoreUnknownKeys = true }.encodeToString(input)
+        call(method = "%s", input = s)
     }
 
 `
@@ -118,8 +121,8 @@ func writeOutputOnlyMethod(w io.Writer, m schema.Method) {
 	camel := strcase.ToCamel(m.Name)
 	lcamel := strcase.ToLowerCamel(m.Name)
 	template := `    suspend fun %s(): %sOutput {
-        val out = call(endpoint = this.url, method = "%s", input = "")
-        return Json.decodeFromString(out)
+        val out = call(method = "%s", input = "")
+        return Json { ignoreUnknownKeys = true }.decodeFromString(out)
     }
 
 `
@@ -133,9 +136,9 @@ func writeMethod(w io.Writer, m schema.Method) {
 	template := `    suspend fun %s(
         input: %sInput
     ): %sOutput {
-        val s = Json.encodeToString(intput)
-        val out = call(endpoint = this.url, method = "%s", input = s)
-        return Json.decodeFromString(out)
+        val s = Json { ignoreUnknownKeys = true }.encodeToString(input)
+        val out = call(method = "%s", input = s)
+        return Json { ignoreUnknownKeys = true }.decodeFromString(out)
     }
 
 `

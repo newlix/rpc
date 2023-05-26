@@ -19,24 +19,24 @@ struct Client {
 
     // addItem adds an item to the list.
     func addItem(input: AddItemInput, complete: @escaping (_ error: Error?) -> ()) {
-        call(endpoint: self.url, method: "add_item", input: input, complete: { (_: Nothing?, err: Error?) in complete(err) })
+        call(method: "add_item", input: input, complete: { (_: Nothing?, err: Error?) in complete(err) })
     }
 
     // getItems returns all items in the list.
     func getItems(complete: @escaping (_ output: GetItemsOutput?, _ err: Error?) -> ()) {
-        call(endpoint: self.url, method: "get_items", input: Nothing(), complete: complete)
+        call(method: "get_items", input: Nothing(), complete: complete)
     }
 
     // removeItem removes an item from the to-do list.
     func removeItem(input: RemoveItemInput, complete: @escaping (_ output: RemoveItemOutput?, _ error: Error?) -> Void) {
-        call(endpoint: self.url, method: "remove_item", input: input, complete: complete)
+        call(method: "remove_item", input: input, complete: complete)
     }
 
 
     // call implementation.
-    private func call<Input, Output>(endpoint: URL, method: String, input: Input, complete: @escaping (_ output: Output?, _ error: Error?) -> Void) where Input: Codable, Output: Codable {
+    private func call<Input, Output>(method: String, input: Input, complete: @escaping (_ output: Output?, _ error: Error?) -> Void) where Input: Codable, Output: Codable {
 
-        var url = endpoint
+        var url = self.url
         url.appendPathComponent(method, isDirectory: false)
 
         var r = URLRequest(url: url)

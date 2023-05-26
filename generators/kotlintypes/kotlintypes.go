@@ -82,7 +82,7 @@ func writeField(w io.Writer, s *schema.Schema, f schema.Field) {
 	if f.ReadOnly {
 		t = "val"
 	}
-	fmt.Fprintf(w, "    @SerialName(\"%s\") %s %s: %s", f.Name, t, strcase.ToLowerCamel(f.Name), kotlinType(s, f))
+	fmt.Fprintf(w, "    @SerialName(\"%s\") %s %s: %s = %s", f.Name, t, strcase.ToLowerCamel(f.Name), kotlinType(s, f), defaultValue(s, f))
 }
 
 // kotlinType returns a Kotlin equivalent type for field f.
@@ -113,6 +113,35 @@ func kotlinType(s *schema.Schema, f schema.Field) string {
 		return "Array<" + kotlinType(s, schema.Field{
 			Type: schema.TypeObject(f.Items),
 		}) + ">"
+	default:
+		panic("unhandled type")
+	}
+}
+
+func defaultValue(s *schema.Schema, f schema.Field) string {
+	if ref := f.Type.Ref.Value; ref != "" {
+		t := schemautil.ResolveRef(s, f.Type.Ref)
+		return strcase.ToCamel(t.Name) + "()"
+	}
+
+	// type
+	switch f.Type.Type {
+	case schema.String:
+		return "\"\""
+	case schema.Int:
+		return "0"
+	case schema.Bool:
+		return "false"
+	case schema.Float:
+		return "0.0"
+	case schema.Timestamp:
+		return "\"\""
+	case schema.Object:
+		return kotlinType(s, schema.Field{
+			Type: schema.TypeObject(f.Items),
+		}) + "()"
+	case schema.Array:
+		return "arrayOf()"
 	default:
 		panic("unhandled type")
 	}

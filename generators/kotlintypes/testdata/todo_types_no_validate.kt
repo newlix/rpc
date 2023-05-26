@@ -9,9 +9,9 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class Item(
-    @SerialName("created_at") var createdAt: String,
-    @SerialName("id") val id: Int,
-    @SerialName("text") var text: String
+    @SerialName("created_at") var createdAt: String = "",
+    @SerialName("id") val id: Int = 0,
+    @SerialName("text") var text: String = ""
 )
 
 /**
@@ -20,7 +20,7 @@ data class Item(
  */
 @Serializable
 data class AddItemInput(
-    @SerialName("item") var item: String
+    @SerialName("item") var item: String = ""
 )
 
 /**
@@ -29,7 +29,7 @@ data class AddItemInput(
  */
 @Serializable
 data class GetItemsOutput(
-    @SerialName("items") var items: Array<Item>
+    @SerialName("items") var items: Array<Item> = arrayOf()
 )
 
 /**
@@ -38,7 +38,7 @@ data class GetItemsOutput(
  */
 @Serializable
 data class RemoveItemInput(
-    @SerialName("id") var id: Int
+    @SerialName("id") var id: Int = 0
 )
 
 /**
@@ -47,6 +47,6 @@ data class RemoveItemInput(
  */
 @Serializable
 data class RemoveItemOutput(
-    @SerialName("item") var item: Item
+    @SerialName("item") var item: Item = Item()
 )
 
