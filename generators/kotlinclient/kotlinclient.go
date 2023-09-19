@@ -9,58 +9,14 @@ import (
 )
 
 var start = `
-import io.ktor.client.*
-import io.ktor.client.engine.cio.*
-import io.ktor.client.features.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-
-
-// RPC is the API client.
-// url is the required API endpoint address.
-class RPC(val url: String) {
-    // AuthToken is an optional authentication token.
-    var authToken: String? = null
-
-    // client is used for making requests, defaulting to URLSession.shared.
-    val client = HttpClient(CIO)
-
-`
-var end = `
-    // call implementation.
-    suspend fun call(
-        method: String, input: String
-    ): String {
-
-        val url = this.url + "/" + method
-        try {
-            val r = this.client.post<HttpResponse>(url) {
-                headers {
-                    append(HttpHeaders.ContentType, "application/json")
-                    if (authToken != null) {
-                        append(HttpHeaders.Authorization, "Bearer ${authToken}")
-                    }
-                }
-                body = input
-            }
-            return r.readText()
-        } catch (e: ClientRequestException) {
-            val body = e.response.readText()
-            val json = Json { ignoreUnknownKeys = true }.decodeFromString<ResponseError>(body)
-            throw RPCError(
-                status = e.response.status.description,
-                statusCode = e.response.status.value,
-                type = json.type,
-                msg = json.message
-            )
-        }
-    }
-}
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 
 data class RPCError(
     val status: String,
@@ -71,12 +27,54 @@ data class RPCError(
 
 @Serializable
 private data class ResponseError(val type: String, val message: String)
+
+
+// RPC is the API client.
+// url is the required API endpoint address.
+class RPC(val endpoint: String) {
+    val decoder = Json { ignoreUnknownKeys = true }
+
+    // AuthToken is an optional authentication token.
+    var authToken: String? = null
+
+    // client is used for making requests, defaulting to URLSession.shared.
+    val client = OkHttpClient()
+
+    private suspend fun call(
+        method: String, input: String
+    ): String {
+        return withContext(Dispatchers.IO) {
+            val url = endpoint + "/" + method
+
+            val request = Request.Builder()
+                .url(url)
+                .post(input.toRequestBody())
+                .addHeader("Content-Type", "application/json")
+            if (authToken != null) {
+                request.addHeader("Authorization", "Bearer ${authToken}")
+            }
+
+            return@withContext client.newCall(request.build()).execute().use { response ->
+                val body: String = response.body!!.string()
+                if (!response.isSuccessful) {
+                    val json = decoder.decodeFromString<ResponseError>(body)
+                    throw RPCError(
+                        status = response.message,
+                        statusCode = response.code,
+                        type = json.type,
+                        msg = json.message
+                    )
+                }
+                return@use response.body!!.string()
+            }
+        }
+    }
 `
 
 // Generate writes the Go client implementations to w.
 func Generate(w io.Writer, s *schema.Schema) error {
 	out := fmt.Fprintf
-
+	// w = os.Stderr
 	out(w, start)
 
 	for _, m := range s.Methods {
@@ -99,7 +97,7 @@ func Generate(w io.Writer, s *schema.Schema) error {
 		}
 	}
 
-	out(w, end)
+	out(w, "}\n")
 
 	return nil
 }
@@ -108,7 +106,7 @@ func writeInputOnlyMethod(w io.Writer, m schema.Method) {
 	camel := strcase.ToCamel(m.Name)
 	lcamel := strcase.ToLowerCamel(m.Name)
 	template := `    suspend fun %s(input: %sInput) {
-        val s = Json { ignoreUnknownKeys = true }.encodeToString(input)
+        val s = decoder.encodeToString(input)
         call(method = "%s", input = s)
     }
 
@@ -122,7 +120,7 @@ func writeOutputOnlyMethod(w io.Writer, m schema.Method) {
 	lcamel := strcase.ToLowerCamel(m.Name)
 	template := `    suspend fun %s(): %sOutput {
         val out = call(method = "%s", input = "")
-        return Json { ignoreUnknownKeys = true }.decodeFromString(out)
+        return decoder.decodeFromString(out)
     }
 
 `
@@ -136,11 +134,10 @@ func writeMethod(w io.Writer, m schema.Method) {
 	template := `    suspend fun %s(
         input: %sInput
     ): %sOutput {
-        val s = Json { ignoreUnknownKeys = true }.encodeToString(input)
+        val s = decoder.encodeToString(input)
         val out = call(method = "%s", input = s)
-        return Json { ignoreUnknownKeys = true }.decodeFromString(out)
+        return decoder.decodeFromString(out)
     }
-
 `
 	fmt.Fprintf(w, template, lcamel, camel, camel, m.Name)
 
