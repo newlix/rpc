@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/apex/rpc/internal/format"
-	"github.com/apex/rpc/schema"
+	"github.com/newlix/rpc/internal/format"
+	"github.com/newlix/rpc/schema"
 )
 
 // Generate writes the Go server implementations to w.
-func Generate(w io.Writer, s *schema.Schema, tracing bool, types string) error {
+func Generate(w io.Writer, s *schema.Schema, types string) error {
 	// router
 	err := writeRouter(w, s, types)
 	if err != nil {
@@ -17,7 +17,7 @@ func Generate(w io.Writer, s *schema.Schema, tracing bool, types string) error {
 	}
 
 	// method stubs
-	err = writeMethods(w, s, tracing, types)
+	err = writeMethods(w, s, types)
 	if err != nil {
 		return fmt.Errorf("writing methods: %w", err)
 	}
@@ -75,7 +75,7 @@ func writeRouter(w io.Writer, s *schema.Schema, types string) error {
 }
 
 // writeMethods writes method stubs to w.
-func writeMethods(w io.Writer, s *schema.Schema, tracing bool, types string) error {
+func writeMethods(w io.Writer, s *schema.Schema, types string) error {
 	out := fmt.Fprintf
 
 	for _, m := range s.Methods {
@@ -89,20 +89,6 @@ func writeMethods(w io.Writer, s *schema.Schema, tracing bool, types string) err
 			out(w, "func (s *Server) %s(ctx context.Context) (interface{}, error) {\n", format.JsName(m.Name))
 		}
 
-		// tracing
-		if tracing {
-			out(w, "  logs := log.FromContext(ctx).WithField(\"method\", %q)\n\n", m.Name)
-
-			if len(m.Inputs) > 0 {
-				out(w, "  logs = logs.WithFields(log.Fields{\n")
-				for _, f := range m.Inputs {
-					out(w, "    %q: in.%s,\n", f.Name, format.GoName(f.Name))
-				}
-				out(w, "  })\n")
-			}
-			out(w, "\n")
-		}
-
 		// invoke method
 		if len(m.Outputs) > 0 {
 			out(w, "  res, err := s.%s", format.GoName(m.Name))
@@ -110,19 +96,12 @@ func writeMethods(w io.Writer, s *schema.Schema, tracing bool, types string) err
 			out(w, "  err := s.%s", format.GoName(m.Name))
 		}
 
-		if tracing {
-			if len(m.Inputs) > 0 {
-				out(w, "(log.NewContext(ctx, logs), in)\n")
-			} else {
-				out(w, "(log.NewContext(ctx, logs))\n")
-			}
+		if len(m.Inputs) > 0 {
+			out(w, "(ctx, in)\n")
 		} else {
-			if len(m.Inputs) > 0 {
-				out(w, "(ctx, in)\n")
-			} else {
-				out(w, "(ctx)\n")
-			}
+			out(w, "(ctx)\n")
 		}
+
 
 		if len(m.Outputs) > 0 {
 			out(w, "  return res, err\n")

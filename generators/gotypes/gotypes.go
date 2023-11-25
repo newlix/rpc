@@ -6,23 +6,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/apex/rpc/internal/format"
-	"github.com/apex/rpc/internal/schemautil"
-	"github.com/apex/rpc/schema"
+	"github.com/newlix/rpc/internal/format"
+	"github.com/newlix/rpc/internal/schemautil"
+	"github.com/newlix/rpc/schema"
 )
 
-var utils = `// oneOf returns true if s is in the values.
-func oneOf(s string, values []string) bool {
-  for _, v := range values {
-		if s == v {
-			return true
-		}
-	}
-	return false
-}`
-
-// Generate writes the Go type implementations to w, with optional validation methods.
-func Generate(w io.Writer, s *schema.Schema, validate bool) error {
+// Generate writes the Go type implementations to w.
+func Generate(w io.Writer, s *schema.Schema) error {
 	out := fmt.Fprintf
 
 	// default tags
@@ -36,10 +26,6 @@ func Generate(w io.Writer, s *schema.Schema, validate bool) error {
 		out(w, "type %s struct {\n", format.GoName(t.Name))
 		writeFields(w, s, t.Properties)
 		out(w, "}\n\n")
-		if validate {
-			writeValidation(w, format.GoName(t.Name), t.Properties)
-			out(w, "\n")
-		}
 	}
 
 	// methods
@@ -52,10 +38,6 @@ func Generate(w io.Writer, s *schema.Schema, validate bool) error {
 			out(w, "type %sInput struct {\n", name)
 			writeFields(w, s, m.Inputs)
 			out(w, "}\n")
-			if validate {
-				out(w, "\n")
-				writeValidation(w, name+"Input", m.Inputs)
-			}
 		}
 
 		// both
@@ -72,10 +54,6 @@ func Generate(w io.Writer, s *schema.Schema, validate bool) error {
 		}
 
 		out(w, "\n")
-	}
-
-	if validate {
-		out(w, "\n%s\n", utils)
 	}
 
 	return nil
@@ -227,16 +205,6 @@ func writeFieldValidation(w io.Writer, f schema.Field, recv byte) error {
 		field := fmt.Sprintf("%c.%s", recv, name)
 		out(w, "  if %s != \"\" && !oneOf(%s, %s) {\n", field, field, formatSlice(f.Enum))
 		writeError(fmt.Sprintf("must be one of: %s", formatEnum(f.Enum)))
-		out(w, "  }\n\n")
-	}
-
-	// validate the children of non-primitive arrays
-	// TODO: HasRef() or similar?
-	if f.Type.Type == schema.Array && f.Items.Ref.Value != "" {
-		out(w, "  for i, v := range %c.%s {\n", recv, name)
-		out(w, "    if err := v.Validate(); err != nil {\n")
-		out(w, "      return fmt.Errorf(\"element %%d: %%s\", i, err.Error())\n")
-		out(w, "    }\n")
 		out(w, "  }\n\n")
 	}
 

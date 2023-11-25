@@ -7,8 +7,8 @@ import (
 	"github.com/tj/assert"
 	"github.com/tj/go-fixture"
 
-	"github.com/apex/rpc/generators/goclient"
-	"github.com/apex/rpc/schema"
+	"github.com/newlix/rpc/generators/goclient"
+	"github.com/newlix/rpc/schema"
 )
 
 func TestGenerate(t *testing.T) {

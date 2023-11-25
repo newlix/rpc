@@ -8,7 +8,7 @@ import (
 
 	"github.com/tj/assert"
 
-	"github.com/apex/rpc"
+	"github.com/newlix/rpc"
 )
 
 // Test error reporting.

@@ -7,8 +7,8 @@ import (
 	"github.com/tj/assert"
 	"github.com/tj/go-fixture"
 
-	"github.com/apex/rpc/generators/kotlinclient"
-	"github.com/apex/rpc/schema"
+	"github.com/newlix/rpc/generators/kotlinclient"
+	"github.com/newlix/rpc/schema"
 )
 
 func TestGenerate(t *testing.T) {

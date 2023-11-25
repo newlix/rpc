@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/apex/rpc/schema"
+	"github.com/newlix/rpc/schema"
 )
 
 // ResolveRef returns a resolved reference, or panics.

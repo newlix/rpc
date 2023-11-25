@@ -3,7 +3,7 @@ package format_test
 import (
 	"testing"
 
-	"github.com/apex/rpc/internal/format"
+	"github.com/newlix/rpc/internal/format"
 	"github.com/tj/assert"
 )
 

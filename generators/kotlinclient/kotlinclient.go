@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/apex/rpc/schema"
+	"github.com/newlix/rpc/schema"
 	"github.com/iancoleman/strcase"
 )
 
@@ -65,7 +65,7 @@ class RPC(val endpoint: String) {
                         msg = json.message
                     )
                 }
-                return@use response.body!!.string()
+                return@use body
             }
         }
     }

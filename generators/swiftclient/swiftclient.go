@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/apex/rpc/schema"
+	"github.com/newlix/rpc/schema"
 	"github.com/iancoleman/strcase"
 )
 

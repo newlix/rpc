@@ -63,14 +63,10 @@ Currently the schemas are loosely a superset of [JSON Schema](https://json-schem
   I would argue this spec is outdated, there is little reason to support batching at the request level, as HTTP/2 handles this for you.
 </details>
 
-<details>
-  <summary>What does the client output look like?</summary>
-  See the <a href="https://github.com/apex/logs/blob/master/client.go">Apex Logs</a> Go client for an example, client code is designed to be concise and idiomatic.
-</details>
 
 ---
 
-[![GoDoc](https://godoc.org/github.com/apex/rpc?status.svg)](https://godoc.org/github.com/apex/rpc)
+[![GoDoc](https://godoc.org/github.com/newlix/rpc?status.svg)](https://godoc.org/github.com/newlix/rpc)
 ![](https://img.shields.io/badge/license-MIT-blue.svg)
 ![](https://img.shields.io/badge/status-stable-green.svg)
 

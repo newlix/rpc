@@ -7,8 +7,8 @@ import (
 	"github.com/tj/assert"
 	"github.com/tj/go-fixture"
 
-	"github.com/apex/rpc/generators/swifttypes"
-	"github.com/apex/rpc/schema"
+	"github.com/newlix/rpc/generators/swifttypes"
+	"github.com/newlix/rpc/schema"
 )
 
 func TestGenerate_noValidate(t *testing.T) {

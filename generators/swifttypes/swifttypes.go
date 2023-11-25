@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/apex/rpc/internal/format"
-	"github.com/apex/rpc/internal/schemautil"
-	"github.com/apex/rpc/schema"
+	"github.com/newlix/rpc/internal/format"
+	"github.com/newlix/rpc/internal/schemautil"
+	"github.com/newlix/rpc/schema"
 	"github.com/iancoleman/strcase"
 )
 

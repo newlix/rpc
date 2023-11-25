@@ -7,8 +7,8 @@ import (
 	"github.com/tj/assert"
 	"github.com/tj/go-fixture"
 
-	"github.com/apex/rpc/generators/goserver"
-	"github.com/apex/rpc/schema"
+	"github.com/newlix/rpc/generators/goserver"
+	"github.com/newlix/rpc/schema"
 )
 
 func TestGenerate_noTypes(t *testing.T) {
@@ -16,7 +16,7 @@ func TestGenerate_noTypes(t *testing.T) {
 	assert.NoError(t, err, "loading schema")
 
 	var act bytes.Buffer
-	err = goserver.Generate(&act, schema, false, "")
+	err = goserver.Generate(&act, schema, "")
 	assert.NoError(t, err, "generating")
 
 	fixture.Assert(t, "todo_server_no_types.go", act.Bytes())
@@ -26,7 +26,7 @@ func TestGenerate_types(t *testing.T) {
 	assert.NoError(t, err, "loading schema")
 
 	var act bytes.Buffer
-	err = goserver.Generate(&act, schema, false, "api")
+	err = goserver.Generate(&act, schema, "api")
 	assert.NoError(t, err, "generating")
 
 	fixture.Assert(t, "todo_server_types.go", act.Bytes())

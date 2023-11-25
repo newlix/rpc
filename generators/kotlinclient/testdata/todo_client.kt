@@ -55,7 +55,7 @@ class RPC(val endpoint: String) {
                         msg = json.message
                     )
                 }
-                return@use response.body!!.string()
+                return@use body
             }
         }
     }

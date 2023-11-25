@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/apex/rpc/internal/format"
-	"github.com/apex/rpc/schema"
+	"github.com/newlix/rpc/internal/format"
+	"github.com/newlix/rpc/schema"
 )
 
 var require = `
