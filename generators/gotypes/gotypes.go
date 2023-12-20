@@ -3,7 +3,6 @@ package gotypes
 import (
 	"fmt"
 	"io"
-	"strconv"
 	"strings"
 
 	"github.com/newlix/rpc/internal/format"
@@ -128,103 +127,4 @@ func formatTags(tags [][]string) string {
 		}
 	}
 	return fmt.Sprintf("`%s`", strings.Join(s, " "))
-}
-
-// writeValidation writes a validation method implementation to w.
-func writeValidation(w io.Writer, name string, fields []schema.Field) error {
-	out := fmt.Fprintf
-	recv := strings.ToLower(name)[0]
-	out(w, "// Validate implementation.\n")
-	out(w, "func (%c *%s) Validate() error {\n", recv, name)
-	for _, f := range fields {
-		writeFieldDefaults(w, f, recv)
-		writeFieldValidation(w, f, recv)
-	}
-	out(w, "  return nil\n")
-	out(w, "}\n")
-	return nil
-}
-
-// writeFieldDefaults writes field defaults to w.
-func writeFieldDefaults(w io.Writer, f schema.Field, recv byte) error {
-	// TODO: write out a separate Default() method?
-	if f.Default == nil {
-		return nil
-	}
-
-	out := fmt.Fprintf
-	name := format.GoName(f.Name)
-
-	switch f.Type.Type {
-	case schema.Int:
-		out(w, "  if %c.%s == 0 {\n", recv, name)
-		out(w, "    %c.%s = %v\n", recv, name, f.Default)
-		out(w, "  }\n\n")
-	case schema.String:
-		out(w, "  if %c.%s == \"\" {\n", recv, name)
-		out(w, "    %c.%s = %q\n", recv, name, f.Default)
-		out(w, "  }\n\n")
-	}
-
-	return nil
-}
-
-// writeFieldValidation writes field validation to w.
-func writeFieldValidation(w io.Writer, f schema.Field, recv byte) error {
-	out := fmt.Fprintf
-	name := format.GoName(f.Name)
-
-	writeError := func(msg string) {
-		out(w, "    return rpc.ValidationError{ Field: %q, Message: %q }\n", f.Name, msg)
-	}
-
-	// required
-	if f.Required {
-		switch f.Type.Type {
-		case schema.Int:
-			out(w, "  if %c.%s == 0 {\n", recv, name)
-			writeError("is required")
-			out(w, "  }\n\n")
-		case schema.String:
-			out(w, "  if %c.%s == \"\" {\n", recv, name)
-			writeError("is required")
-			out(w, "  }\n\n")
-		case schema.Array, schema.Object:
-			out(w, "  if %c.%s == nil {\n", recv, name)
-			writeError("is required")
-			out(w, "  }\n\n")
-		case schema.Timestamp:
-			out(w, "  if %c.%s.IsZero() {\n", recv, name)
-			writeError("is required")
-			out(w, "  }\n\n")
-		}
-	}
-
-	// enums
-	if f.Type.Type == schema.String && f.Enum != nil {
-		field := fmt.Sprintf("%c.%s", recv, name)
-		out(w, "  if %s != \"\" && !oneOf(%s, %s) {\n", field, field, formatSlice(f.Enum))
-		writeError(fmt.Sprintf("must be one of: %s", formatEnum(f.Enum)))
-		out(w, "  }\n\n")
-	}
-
-	return nil
-}
-
-// formatSlice returns a formatted slice from enum.
-func formatSlice(values []string) string {
-	var vals []string
-	for _, l := range values {
-		vals = append(vals, strconv.Quote(l))
-	}
-	return fmt.Sprintf("[]string{%s}", strings.Join(vals, ", "))
-}
-
-// formatEnum returns a formatted enum values.
-func formatEnum(values []string) string {
-	var vals []string
-	for _, l := range values {
-		vals = append(vals, strconv.Quote(l))
-	}
-	return strings.Join(vals, ", ")
 }
