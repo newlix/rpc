@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/iancoleman/strcase"
 	"github.com/newlix/rpc/internal/format"
 	"github.com/newlix/rpc/internal/schemautil"
 	"github.com/newlix/rpc/schema"
-	"github.com/iancoleman/strcase"
 )
 
 // Generate writes the Go type implementations to w, with optional validation methods.
@@ -23,7 +23,8 @@ func Generate(w io.Writer, s *schema.Schema, validate bool) error {
 		writeFields(w, s, t.Properties)
 		out(w, "\n")
 		writeCodingKeys(w, s, t.Properties)
-
+		out(w, "\n")
+		writeDecoderInit(w, s, t.Properties)
 		out(w, "}\n\n")
 	}
 
@@ -38,6 +39,8 @@ func Generate(w io.Writer, s *schema.Schema, validate bool) error {
 			writeFields(w, s, m.Inputs)
 			out(w, "\n")
 			writeCodingKeys(w, s, m.Inputs)
+			out(w, "\n")
+			writeDecoderInit(w, s, m.Inputs)
 			out(w, "}\n")
 		}
 
@@ -53,6 +56,8 @@ func Generate(w io.Writer, s *schema.Schema, validate bool) error {
 			writeFields(w, s, m.Outputs)
 			out(w, "\n")
 			writeCodingKeys(w, s, m.Outputs)
+			out(w, "\n")
+			writeDecoderInit(w, s, m.Outputs)
 			out(w, "}\n")
 		}
 
@@ -92,6 +97,20 @@ func writeCodingKeys(w io.Writer, s *schema.Schema, fields []schema.Field) {
 // writeCodingKeys to writer
 func writeCodingKey(w io.Writer, s *schema.Schema, f schema.Field) {
 	fmt.Fprintf(w, "        case %s = \"%s\"\n", strcase.ToLowerCamel(format.GoName(f.Name)), f.Name)
+}
+
+// writeCodingKeys to writer
+func writeDecoderInit(w io.Writer, s *schema.Schema, fields []schema.Field) {
+	out := fmt.Fprintf
+	out(w, "    required init(from decoder: Decoder) throws {\n")
+	out(w, "        let container = try decoder.container(keyedBy: CodingKeys.self)\n")
+	for _, f := range fields {
+		name := strcase.ToLowerCamel(format.GoName(f.Name))
+		out(w, "        if let %s = try container.decodeIfPresent(String.self, forKey: .%s) {\n", name, name)
+		out(w, "            self.%s = %s\n", name, name)
+		out(w, "        }\n")
+	}
+	out(w, "    }\n")
 }
 
 // swiftType returns a Go equivalent type for field f.

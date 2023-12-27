@@ -16,6 +16,19 @@ struct Item: Codable {
         case id = "id"
         case text = "text"
     }
+
+    required init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if let createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt) {
+            self.createdAt = createdAt
+        }
+        if let id = try container.decodeIfPresent(String.self, forKey: .id) {
+            self.id = id
+        }
+        if let text = try container.decodeIfPresent(String.self, forKey: .text) {
+            self.text = text
+        }
+    }
 }
 
 // AddItemInput params.
@@ -25,6 +38,13 @@ struct AddItemInput: Codable {
 
     enum CodingKeys: String, CodingKey {
         case item = "item"
+    }
+
+    required init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if let item = try container.decodeIfPresent(String.self, forKey: .item) {
+            self.item = item
+        }
     }
 }
 
@@ -36,6 +56,13 @@ struct GetItemsOutput: Codable {
     enum CodingKeys: String, CodingKey {
         case items = "items"
     }
+
+    required init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if let items = try container.decodeIfPresent(String.self, forKey: .items) {
+            self.items = items
+        }
+    }
 }
 
 // RemoveItemInput params.
@@ -46,6 +73,13 @@ struct RemoveItemInput: Codable {
     enum CodingKeys: String, CodingKey {
         case id = "id"
     }
+
+    required init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if let id = try container.decodeIfPresent(String.self, forKey: .id) {
+            self.id = id
+        }
+    }
 }
 
 // RemoveItemOutput params.
@@ -55,6 +89,13 @@ struct RemoveItemOutput: Codable {
 
     enum CodingKeys: String, CodingKey {
         case item = "item"
+    }
+
+    required init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if let item = try container.decodeIfPresent(String.self, forKey: .item) {
+            self.item = item
+        }
     }
 }
 
