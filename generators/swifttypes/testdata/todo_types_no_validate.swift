@@ -16,13 +16,15 @@ struct Item: Codable {
         case id = "id"
         case text = "text"
     }
+}
 
-    required init(from decoder: Decoder) throws {
+extension Item {
+    init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        if let createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt) {
+        if let createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) {
             self.createdAt = createdAt
         }
-        if let id = try container.decodeIfPresent(String.self, forKey: .id) {
+        if let id = try container.decodeIfPresent(Int.self, forKey: .id) {
             self.id = id
         }
         if let text = try container.decodeIfPresent(String.self, forKey: .text) {
@@ -30,7 +32,6 @@ struct Item: Codable {
         }
     }
 }
-
 // AddItemInput params.
 struct AddItemInput: Codable {
     // item is the item to add. This field is required.
@@ -39,8 +40,10 @@ struct AddItemInput: Codable {
     enum CodingKeys: String, CodingKey {
         case item = "item"
     }
+}
 
-    required init(from decoder: Decoder) throws {
+extension AddItemInput {
+    init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         if let item = try container.decodeIfPresent(String.self, forKey: .item) {
             self.item = item
@@ -56,10 +59,12 @@ struct GetItemsOutput: Codable {
     enum CodingKeys: String, CodingKey {
         case items = "items"
     }
+}
 
-    required init(from decoder: Decoder) throws {
+extension GetItemsOutput {
+    init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        if let items = try container.decodeIfPresent(String.self, forKey: .items) {
+        if let items = try container.decodeIfPresent([Item].self, forKey: .items) {
             self.items = items
         }
     }
@@ -73,10 +78,12 @@ struct RemoveItemInput: Codable {
     enum CodingKeys: String, CodingKey {
         case id = "id"
     }
+}
 
-    required init(from decoder: Decoder) throws {
+extension RemoveItemInput {
+    init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        if let id = try container.decodeIfPresent(String.self, forKey: .id) {
+        if let id = try container.decodeIfPresent(Int.self, forKey: .id) {
             self.id = id
         }
     }
@@ -90,10 +97,12 @@ struct RemoveItemOutput: Codable {
     enum CodingKeys: String, CodingKey {
         case item = "item"
     }
+}
 
-    required init(from decoder: Decoder) throws {
+extension RemoveItemOutput {
+    init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        if let item = try container.decodeIfPresent(String.self, forKey: .item) {
+        if let item = try container.decodeIfPresent(Item.self, forKey: .item) {
             self.item = item
         }
     }

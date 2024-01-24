@@ -23,9 +23,9 @@ func Generate(w io.Writer, s *schema.Schema, validate bool) error {
 		writeFields(w, s, t.Properties)
 		out(w, "\n")
 		writeCodingKeys(w, s, t.Properties)
+		out(w, "}\n")
 		out(w, "\n")
-		writeDecoderInit(w, s, t.Properties)
-		out(w, "}\n\n")
+		writeDecoderInit(w, format.GoName(t.Name), s, t.Properties)
 	}
 
 	// methods
@@ -39,9 +39,9 @@ func Generate(w io.Writer, s *schema.Schema, validate bool) error {
 			writeFields(w, s, m.Inputs)
 			out(w, "\n")
 			writeCodingKeys(w, s, m.Inputs)
-			out(w, "\n")
-			writeDecoderInit(w, s, m.Inputs)
 			out(w, "}\n")
+			out(w, "\n")
+			writeDecoderInit(w, name+"Input", s, m.Inputs)
 		}
 
 		// both
@@ -56,9 +56,9 @@ func Generate(w io.Writer, s *schema.Schema, validate bool) error {
 			writeFields(w, s, m.Outputs)
 			out(w, "\n")
 			writeCodingKeys(w, s, m.Outputs)
-			out(w, "\n")
-			writeDecoderInit(w, s, m.Outputs)
 			out(w, "}\n")
+			out(w, "\n")
+			writeDecoderInit(w, name+"Output", s, m.Outputs)
 		}
 
 		out(w, "\n")
@@ -100,17 +100,19 @@ func writeCodingKey(w io.Writer, s *schema.Schema, f schema.Field) {
 }
 
 // writeCodingKeys to writer
-func writeDecoderInit(w io.Writer, s *schema.Schema, fields []schema.Field) {
+func writeDecoderInit(w io.Writer, extensionName string, s *schema.Schema, fields []schema.Field) {
 	out := fmt.Fprintf
-	out(w, "    required init(from decoder: Decoder) throws {\n")
+	out(w, "extension %s {\n", extensionName)
+	out(w, "    init(from decoder: Decoder) throws {\n")
 	out(w, "        let container = try decoder.container(keyedBy: CodingKeys.self)\n")
 	for _, f := range fields {
 		name := strcase.ToLowerCamel(format.GoName(f.Name))
-		out(w, "        if let %s = try container.decodeIfPresent(String.self, forKey: .%s) {\n", name, name)
+		out(w, "        if let %s = try container.decodeIfPresent(%s.self, forKey: .%s) {\n", name, swiftType(s, f), name)
 		out(w, "            self.%s = %s\n", name, name)
 		out(w, "        }\n")
 	}
 	out(w, "    }\n")
+	out(w, "}\n")
 }
 
 // swiftType returns a Go equivalent type for field f.

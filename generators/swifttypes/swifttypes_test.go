@@ -18,6 +18,6 @@ func TestGenerate_noValidate(t *testing.T) {
 	var act bytes.Buffer
 	err = swifttypes.Generate(&act, schema, false)
 	assert.NoError(t, err, "generating")
-
+	// os.WriteFile("/tmp/dat1", act.Bytes(), 0644)
 	fixture.Assert(t, "todo_types_no_validate.swift", act.Bytes())
 }
